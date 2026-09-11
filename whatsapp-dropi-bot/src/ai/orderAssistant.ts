@@ -1,5 +1,6 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { config } from "../config.js";
+import { PRODUCT_CATALOG } from "./catalog.js";
 import type { AiChatMessage, DraftOrder } from "../types.js";
 
 let client: Anthropic | null = null;
@@ -56,7 +57,8 @@ function buildSystemPrompt(): string {
     "Después de propose_order, el sistema le muestra al cliente un resumen para que lo confirme — no necesitas redactar esa confirmación vos misma.",
     "Si el cliente pregunta por el estado de un pedido existente, llama a check_order_status.",
     "Para cualquier otra pregunta (envíos, precios, características de los productos, lo que sea), responde con la información que tengas — usala para reforzar por qué le conviene comprar — y si no sabes algo con certeza, decilo en vez de inventar.",
-    config.ai.faqContext ? `Información del negocio y los productos:\n${config.ai.faqContext}` : "",
+    PRODUCT_CATALOG ? `Catálogo de productos:\n${PRODUCT_CATALOG}` : "",
+    config.ai.faqContext ? `Información del negocio:\n${config.ai.faqContext}` : "",
   ]
     .filter(Boolean)
     .join("\n\n");

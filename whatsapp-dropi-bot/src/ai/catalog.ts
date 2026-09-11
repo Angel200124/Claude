@@ -25,4 +25,22 @@ Ideal para:
 - Lugares con agua fría todo el año
 - Reemplazar calefones viejos o dañados
 - Suites, baños extra y lavanderías
+
+### Slim Patch — Parches Corporales
+Apoya tu rutina de bienestar de forma práctica y cómoda con Slim Patch, un
+parche corporal diseñado para complementar un estilo de vida saludable. Su
+formato discreto permite usarlo durante el día sin interferir con las
+actividades diarias.
+
+Beneficios:
+- Fácil y cómodo de usar
+- Diseño discreto y ligero
+- Ideal para complementar una alimentación equilibrada y el ejercicio
+- Adhesión cómoda para uso diario
+- Práctico para llevar a cualquier lugar
+
+Importante: es un producto de bienestar/complemento, no un tratamiento
+médico ni una solución garantizada para bajar de peso — nunca prometas
+resultados de pérdida de peso ni hagas afirmaciones médicas sobre este
+producto; hablá solo de estos beneficios tal como están.
 `.trim();

@@ -23,7 +23,7 @@ const PROPOSE_ORDER_TOOL: Anthropic.Tool = {
     type: "object",
     properties: {
       product_name: { type: "string", description: "Producto que quiere pedir, tal como lo dijo el cliente." },
-      quantity: { type: "integer", minimum: 1, description: "Cantidad de unidades." },
+      quantity: { type: "integer", description: "Cantidad de unidades (siempre 1 o más)." },
       customer_name: { type: "string", description: "Nombre para el destinatario del envío." },
       address: { type: "string", description: "Dirección de entrega (calle, número, barrio)." },
       city: { type: "string", description: "Ciudad de entrega." },

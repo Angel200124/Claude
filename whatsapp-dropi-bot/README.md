@@ -90,19 +90,25 @@ Cliente escribe "ESTADO" → le contesta el estado de su último pedido. Cualqui
 
 ### Modo "ai" — Lucía maneja toda la conversación
 
-Con `CONVERSATION_MODE=ai` y `ANTHROPIC_API_KEY` configurada, Claude (con la personalidad "Lucía" — ver [`src/ai/orderAssistant.ts`](./src/ai/orderAssistant.ts)) conversa libremente en cada mensaje: saludos, preguntas sobre productos (catálogo en [`src/ai/catalog.ts`](./src/ai/catalog.ts)), y también juntar los datos del pedido de forma natural en vez de un formulario fijo — ver [`src/conversation/aiFlow.ts`](./src/conversation/aiFlow.ts). No hace falta ninguna palabra clave para nada: responde a todo lo que le escriban, entendiendo el mensaje sea como sea que esté redactado (incluida la confirmación o cancelación del pedido, sin depender de una palabra literal como "CONFIRMAR").
+Con `CONVERSATION_MODE=ai` y `ANTHROPIC_API_KEY` configurada, Claude (con la personalidad "Lucía", asesora de ventas formal y persuasiva — ver [`src/ai/orderAssistant.ts`](./src/ai/orderAssistant.ts)) conversa libremente en cada mensaje: saluda, persuade con los beneficios del catálogo ([`src/ai/catalog.ts`](./src/ai/catalog.ts)) — siempre resaltando envío gratis y pago al recibir —, y junta los datos de entrega de forma natural en vez de un formulario fijo — ver [`src/conversation/aiFlow.ts`](./src/conversation/aiFlow.ts). No hace falta ninguna palabra clave para nada: responde a todo lo que le escriban, entendiendo el mensaje sea como sea que esté redactado.
 
-**Seguro incluido:** aunque la IA decide qué preguntar y cómo interpretar cada respuesta del cliente, la creación real del pedido **solo** ocurre en código, cuando el modelo llama explícitamente a la herramienta `confirm_order` — ese paso es siempre una acción estructurada y auditable, nunca texto libre parseado a mano ni algo que la IA pueda ejecutar por su cuenta sin pasar por ahí.
+El cliente da su aceptación de compra en la pregunta de cierre ("¿Desea que procedamos con su pedido...?"); a partir de ahí, en cuanto Lucía junta los datos de entrega obligatorios, el pedido se genera directamente — no hay un segundo paso de "confirmar el resumen". La creación real del pedido **solo** ocurre en código, cuando el modelo llama explícitamente a la herramienta `create_order` con todos los datos requeridos — eso es siempre una acción estructurada y auditable, nunca texto libre parseado a mano ni algo que la IA pueda ejecutar por fuera de esa herramienta.
+
+También soporta que el cliente comparta su ubicación real de WhatsApp (no solo texto) — el webhook la convierte a un link de Google Maps que Lucía puede usar como dato de entrega.
+
+Además del envío a domicilio (gratis, pago al recibir), Lucía puede ofrecer retiro en agencia con un abono del 10% por adelantado — la cuenta bancaria para ese abono se configura en `PICKUP_BANK_ACCOUNT` dentro de [`src/ai/catalog.ts`](./src/ai/catalog.ts).
 
 Cada cliente tiene su propio historial de conversación (guardado en SQLite, hasta los últimos 20 mensajes) para que Claude tenga contexto de lo ya hablado.
 
 **Costo:** cada mensaje del modo "ai" es una llamada a la API de Claude (con `output_config.effort: "low"` para mantenerlo rápido y barato). Para un volumen chico/mediano el gasto es de centavos de dólar por conversación — podés cambiar `CLAUDE_MODEL` a algo más económico (ej. `claude-haiku-4-5`) si el volumen crece.
 
-Los textos fijos (confirmación, mensajes de estado, etc.) se pueden editar en [`src/conversation/messages.ts`](./src/conversation/messages.ts); la personalidad y el catálogo de la IA se ajustan en [`src/ai/orderAssistant.ts`](./src/ai/orderAssistant.ts) y [`src/ai/catalog.ts`](./src/ai/catalog.ts).
+Los textos fijos (mensajes de estado, etc.) se pueden editar en [`src/conversation/messages.ts`](./src/conversation/messages.ts); la personalidad, el proceso de venta y el catálogo de la IA se ajustan en [`src/ai/orderAssistant.ts`](./src/ai/orderAssistant.ts) y [`src/ai/catalog.ts`](./src/ai/catalog.ts).
 
 ## 6. Cómo se avisa un pedido nuevo
 
-Cada pedido confirmado se guarda en la base local y, si `OWNER_NOTIFICATION_PHONE` está configurado, le llega un WhatsApp al dueño del negocio con todos los datos (producto, cantidad, cliente, dirección, ciudad) para que coordine el envío y le mande la guía al cliente por su cuenta.
+Cada pedido confirmado se guarda en la base local y, si `OWNER_NOTIFICATION_PHONE` está configurado, le llega un WhatsApp al dueño del negocio con todos los datos (producto, cantidad, precio total, cliente, contacto, dirección, ciudad, referencia, ubicación y método de entrega) para que coordine el envío (o verifique el abono, si es retiro en agencia) y le mande la guía al cliente por su cuenta.
+
+El mensaje final que ve el cliente en modo IA termina con un saludo según la hora en Ecuador y el emoji 🛍️, para que se identifique de un vistazo en la conversación que la venta se cerró.
 
 ## 7. Estructura del proyecto
 

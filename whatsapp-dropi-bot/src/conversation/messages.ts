@@ -32,21 +32,66 @@ export const CONFIRM_INVALID = "Escribí *CONFIRMAR* para generar el pedido, o *
 
 export const ORDER_CANCELLED = "Listo, cancelé el pedido. Escribí *PEDIDO* cuando quieras empezar de nuevo.";
 
-/** Mensaje que ve el cliente apenas confirma el pedido — el envío lo coordina el dueño del negocio a mano. */
-export const ORDER_RECEIVED_MANUAL = `¡Listo, pedido recibido! ✅
+/** "muy buenos días" / "muy buenas tardes" / "muy buenas noches" según la hora actual en Ecuador. */
+function timeGreetingEcuador(): string {
+  const hour = Number(
+    new Intl.DateTimeFormat("en-US", {
+      hour: "numeric",
+      hour12: false,
+      timeZone: "America/Guayaquil",
+    }).format(new Date()),
+  );
+  if (hour < 12) return "muy buenos días";
+  if (hour < 19) return "muy buenas tardes";
+  return "muy buenas noches";
+}
 
-En breve te contactamos para coordinar el envío y pasarte el número de seguimiento.`;
+const DEPOSIT_RATE = 0.1;
+
+/**
+ * Mensaje de cierre elegante que ve el cliente cuando Lucía (modo IA) genera
+ * el pedido — varía según si es envío a domicilio o retiro en agencia.
+ * Siempre termina con un saludo según la hora (Ecuador) y el emoji 🛍️, para
+ * que el dueño del negocio identifique de un vistazo que se cerró una venta.
+ */
+export function orderConfirmedMessage(draft: DraftOrder): string {
+  const greeting = timeGreetingEcuador();
+
+  if (draft.deliveryMethod === "agencia") {
+    const deposit = draft.totalPrice ? (draft.totalPrice * DEPOSIT_RATE).toFixed(2) : null;
+    const depositLine = deposit
+      ? `Recuerde realizar el abono del 10% ($${deposit}) para reservar su retiro en agencia.`
+      : "Recuerde realizar el abono del 10% para reservar su retiro en agencia.";
+    return `Perfecto, Estimado/a, queda registrado su pedido. ${depositLine} En cuanto lo confirmemos, coordinamos la fecha de retiro.
+
+Que tenga ${greeting} 🛍️`;
+  }
+
+  return `Queda registrado, Estimado/a. Su pedido es con *ENVÍO GRATIS* y *PAGA AL RECIBIR* — en breve le confirmamos la fecha de entrega.
+
+Que tenga ${greeting} 🛍️`;
+}
 
 export function ownerOrderNotification(orderRef: string, customerPhone: string, draft: DraftOrder): string {
-  return `📦 *Pedido nuevo* (ref. ${orderRef})
-
-🛒 Producto: ${draft.productName}
-🔢 Cantidad: ${draft.quantity}
-🙍 Cliente: ${draft.customerName} — wa.me/${customerPhone}
-📍 Dirección: ${draft.address}
-🏙️ Ciudad: ${draft.city}
-
-Coordina el envío y mándale la guía al cliente.`;
+  const deposit = draft.totalPrice ? (draft.totalPrice * DEPOSIT_RATE).toFixed(2) : null;
+  const lines = [
+    `📦 *Pedido nuevo* (ref. ${orderRef})`,
+    "",
+    `🛒 Producto: ${draft.productName}`,
+    `🔢 Cantidad: ${draft.quantity}`,
+    draft.totalPrice ? `💵 Total: $${draft.totalPrice.toFixed(2)}` : "",
+    `🙍 Cliente: ${draft.customerName} — wa.me/${customerPhone}`,
+    draft.contactPhone ? `📞 Contacto: ${draft.contactPhone}` : "",
+    `📍 Dirección: ${draft.address}`,
+    `🏙️ Ciudad: ${draft.city}`,
+    draft.reference ? `🧭 Referencia: ${draft.reference}` : "",
+    draft.locationLink ? `📌 Ubicación: ${draft.locationLink}` : "",
+    "",
+    draft.deliveryMethod === "agencia"
+      ? `Retiro en agencia — verificá el abono del 10%${deposit ? ` ($${deposit})` : ""} antes de coordinar el retiro.`
+      : "Envío a domicilio, gratis y pago al recibir. Coordina el envío y mándale la guía al cliente.",
+  ];
+  return lines.filter(Boolean).join("\n");
 }
 
 export function orderStatusMessage(orderRef: string, status: string): string {

@@ -39,5 +39,5 @@ export async function submitOrder(customerPhone: string, draft: DraftOrder): Pro
     console.warn(`[orders] Pedido ${orderRef} guardado, pero OWNER_NOTIFICATION_PHONE no está configurado.`);
   }
 
-  return { success: true, reply: msg.ORDER_RECEIVED_MANUAL };
+  return { success: true, reply: msg.orderConfirmedMessage(draft) };
 }

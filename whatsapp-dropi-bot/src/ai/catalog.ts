@@ -26,6 +26,8 @@ Ideal para:
 - Reemplazar calefones viejos o dañados
 - Suites, baños extra y lavanderías
 
+Precio: $43.99 (unidad).
+
 ### Slim Patch — Parches Corporales
 Apoya tu rutina de bienestar de forma práctica y cómoda con Slim Patch, un
 parche corporal diseñado para complementar un estilo de vida saludable. Su
@@ -43,4 +45,17 @@ Importante: es un producto de bienestar/complemento, no un tratamiento
 médico ni una solución garantizada para bajar de peso — nunca prometas
 resultados de pérdida de peso ni hagas afirmaciones médicas sobre este
 producto; hablá solo de estos beneficios tal como están.
+
+Se vende en paquetes de cantidad fija (no unidad suelta) — ofrecé estas
+opciones y dejá que el cliente elija cuál le conviene:
+- Paquete de 30 unidades: $18.99
+- Paquete de 60 unidades: $22.99
+- Paquete de 90 unidades: $26.99
 `.trim();
+
+/**
+ * Cuenta bancaria (Banco Pichincha) para el abono del 10% cuando el cliente
+ * elige retirar en agencia en vez de envío a domicilio. TODO: completar con
+ * los datos reales (banco, tipo de cuenta, número, titular, cédula/RUC).
+ */
+export const PICKUP_BANK_ACCOUNT = "";

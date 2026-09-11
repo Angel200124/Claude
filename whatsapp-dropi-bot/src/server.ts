@@ -65,15 +65,26 @@ app.post("/webhook/whatsapp", async (req, res) => {
       const from: string = message.from;
       console.log(`[webhook] Mensaje de ${from} (tipo: ${message.type})`);
 
-      if (message.type !== "text") {
+      let text: string;
+      if (message.type === "text") {
+        text = message.text?.body ?? "";
+      } else if (message.type === "location") {
+        // El cliente compartió su ubicación real de WhatsApp (no texto) — la
+        // convertimos a un link de Maps para que quede en la conversación y
+        // Lucía la pueda usar/pasar como dato de entrega.
+        const loc = message.location ?? {};
+        const mapsLink =
+          loc.latitude != null && loc.longitude != null ? `https://maps.google.com/?q=${loc.latitude},${loc.longitude}` : "";
+        text = ["[El cliente compartió su ubicación de WhatsApp]", loc.name, loc.address, mapsLink]
+          .filter(Boolean)
+          .join(" — ");
+      } else {
         await sendWhatsAppText(
           from,
-          "Por ahora solo puedo leer mensajes de texto 🙏. Escribime tu pedido o consulta como texto.",
+          "Por ahora solo puedo leer mensajes de texto o ubicación 🙏. Escribime tu pedido o consulta como texto.",
         );
         continue;
       }
-
-      const text: string = message.text?.body ?? "";
       console.log(`[webhook] Texto de ${from}: "${text}"`);
       const replies = useAiConversation
         ? await handleIncomingMessageAI(from, text)

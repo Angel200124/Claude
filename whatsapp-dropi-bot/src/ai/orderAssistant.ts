@@ -115,6 +115,7 @@ function buildSystemPrompt(): string {
       "En el caso de retiro en agencia, generá igual el pedido con create_order (delivery_method: \"agencia\") en cuanto tengas los datos — el dueño del negocio se encarga de verificar el abono antes de coordinar el retiro.",
     ].join("\n"),
     "Si el cliente pregunta por el estado de un pedido existente, llama a check_order_status.",
+    "Si el cliente manda una imagen (por ejemplo, una foto o captura del producto que busca, o de algo parecido que vio en otro lado), mirala y respondé según lo que muestra: si se parece a algo del catálogo, decíselo y seguí vendiendo ese producto; si no tiene que ver con el catálogo, decilo con honestidad en vez de inventar que sí lo tenés.",
     "Mensajes cortos, como los de WhatsApp real (2-4 líneas).",
     PRODUCT_CATALOG ? `Catálogo de productos:\n${PRODUCT_CATALOG}` : "",
     config.ai.faqContext ? `Información del negocio:\n${config.ai.faqContext}` : "",
@@ -123,8 +124,25 @@ function buildSystemPrompt(): string {
     .join("\n\n");
 }
 
-function toApiMessages(history: AiChatMessage[], userMessage: string): Anthropic.MessageParam[] {
-  return [...history.map((m) => ({ role: m.role, content: m.content })), { role: "user" as const, content: userMessage }];
+export interface InlineImage {
+  /** Datos de la imagen en base64 (sin el prefijo "data:...;base64,"). */
+  data: string;
+  /** ej. "image/jpeg", "image/png". */
+  mediaType: "image/jpeg" | "image/png" | "image/gif" | "image/webp";
+}
+
+function toApiMessages(history: AiChatMessage[], userMessage: string, image?: InlineImage): Anthropic.MessageParam[] {
+  const lastContent: Anthropic.MessageParam["content"] = image
+    ? [
+        { type: "image", source: { type: "base64", media_type: image.mediaType, data: image.data } },
+        { type: "text", text: userMessage },
+      ]
+    : userMessage;
+
+  return [
+    ...history.map((m) => ({ role: m.role, content: m.content })),
+    { role: "user" as const, content: lastContent },
+  ];
 }
 
 /**
@@ -134,10 +152,15 @@ function toApiMessages(history: AiChatMessage[], userMessage: string): Anthropic
  * en el sistema sigue pasando SOLO en código, disparada por el tool_use
  * create_order — nunca por texto libre interpretado a mano ni decidida por la
  * IA sin pasar por ahí.
+ *
+ * `image`: si el cliente mandó una foto en este turno, se la pasamos a Claude
+ * (que sí puede ver imágenes de forma nativa, sin servicio externo). No se
+ * guarda en el historial — solo influye en la respuesta de este turno.
  */
 export async function runOrderAssistant(
   history: AiChatMessage[],
   userMessage: string,
+  image?: InlineImage,
 ): Promise<AssistantResult> {
   try {
     const response = await getClient().messages.create({
@@ -146,7 +169,7 @@ export async function runOrderAssistant(
       output_config: { effort: "low" },
       system: buildSystemPrompt(),
       tools: [CREATE_ORDER_TOOL, CHECK_ORDER_STATUS_TOOL],
-      messages: toApiMessages(history, userMessage),
+      messages: toApiMessages(history, userMessage, image),
     });
 
     const toolUse = response.content.find((b): b is Anthropic.ToolUseBlock => b.type === "tool_use");

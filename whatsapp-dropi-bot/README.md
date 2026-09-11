@@ -114,6 +114,10 @@ El mensaje final que ve el cliente en modo IA termina con un saludo según la ho
 
 Si el cliente manda un audio, el bot lo descarga de WhatsApp, lo transcribe a texto con Whisper (corriendo en [Groq](https://console.groq.com), configurable con `GROQ_API_KEY`) y lo procesa como si fuera un mensaje de texto normal — ver [`src/whatsapp/media.ts`](./src/whatsapp/media.ts) y [`src/ai/transcribe.ts`](./src/ai/transcribe.ts). Sin `GROQ_API_KEY` configurada, el bot le pide al cliente que escriba en texto en vez de mandar audio.
 
+## 7.1. Imágenes (solo modo IA)
+
+Si el cliente manda una foto (por ejemplo, del producto que busca o algo parecido), el bot la descarga y se la pasa directo a Claude — que ve imágenes de forma nativa, sin ningún servicio externo. Lucía responde según lo que muestra la imagen, comparándola con el catálogo. La imagen no se guarda en el historial de la conversación (solo influye en la respuesta de ese turno); en modo "rules" no se procesan imágenes.
+
 ## 8. Estructura del proyecto
 
 ```

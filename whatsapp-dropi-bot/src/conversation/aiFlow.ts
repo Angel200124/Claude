@@ -1,6 +1,6 @@
 import { getOrCreateCustomer, saveCustomer, getLatestOrderForCustomer } from "../db.js";
 import { submitOrder } from "../orders/submitOrder.js";
-import { runOrderAssistant } from "../ai/orderAssistant.js";
+import { runOrderAssistant, type InlineImage } from "../ai/orderAssistant.js";
 import type { DraftOrder } from "../types.js";
 import * as msg from "./messages.js";
 
@@ -16,10 +16,10 @@ import * as msg from "./messages.js";
  * todos los datos requeridos presentes — nunca por texto libre parseado a
  * mano ni por una decisión de la IA que no pase por esa herramienta.
  */
-export async function handleIncomingMessageAI(phone: string, text: string): Promise<string[]> {
+export async function handleIncomingMessageAI(phone: string, text: string, image?: InlineImage): Promise<string[]> {
   const customer = getOrCreateCustomer(phone);
 
-  const result = await runOrderAssistant(customer.aiHistory, text);
+  const result = await runOrderAssistant(customer.aiHistory, text, image);
   let reply: string;
 
   if (result.kind === "create_order") {

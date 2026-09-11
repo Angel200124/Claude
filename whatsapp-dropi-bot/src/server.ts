@@ -6,6 +6,9 @@ import { handleIncomingMessageAI } from "./conversation/aiFlow.js";
 import { sendWhatsAppText } from "./whatsapp/client.js";
 import { downloadWhatsAppMedia } from "./whatsapp/media.js";
 import { transcribeAudio } from "./ai/transcribe.js";
+import type { InlineImage } from "./ai/orderAssistant.js";
+
+const SUPPORTED_IMAGE_TYPES: InlineImage["mediaType"][] = ["image/jpeg", "image/png", "image/gif", "image/webp"];
 
 assertRequiredConfig();
 
@@ -68,6 +71,7 @@ app.post("/webhook/whatsapp", async (req, res) => {
       console.log(`[webhook] Mensaje de ${from} (tipo: ${message.type})`);
 
       let text: string;
+      let image: InlineImage | undefined;
       if (message.type === "text") {
         text = message.text?.body ?? "";
       } else if (message.type === "location") {
@@ -97,16 +101,37 @@ app.post("/webhook/whatsapp", async (req, res) => {
         }
         text = transcript;
         console.log(`[webhook] Audio de ${from} transcripto: "${text}"`);
+      } else if (message.type === "image") {
+        const mediaId = message.image?.id;
+        const caption: string = message.image?.caption ?? "";
+        if (!mediaId) {
+          await sendWhatsAppText(from, "No pude recibir tu imagen 🙏, ¿me la podés reenviar?");
+          continue;
+        }
+        try {
+          const { buffer, mimeType } = await downloadWhatsAppMedia(mediaId);
+          if (!SUPPORTED_IMAGE_TYPES.includes(mimeType as InlineImage["mediaType"])) {
+            await sendWhatsAppText(from, "No pude leer ese formato de imagen 🙏, ¿me la podés mandar como foto normal?");
+            continue;
+          }
+          image = { data: buffer.toString("base64"), mediaType: mimeType as InlineImage["mediaType"] };
+          text = caption || "[El cliente envió una imagen]";
+          console.log(`[webhook] Imagen de ${from} recibida (${mimeType})`);
+        } catch (error) {
+          console.error(`[webhook] Error procesando imagen de ${from}:`, error);
+          await sendWhatsAppText(from, "Tuve un problema para ver tu imagen 🙏, ¿me la podés reenviar?");
+          continue;
+        }
       } else {
         await sendWhatsAppText(
           from,
-          "Por ahora solo puedo leer mensajes de texto, audio o ubicación 🙏. Escribime tu pedido o consulta.",
+          "Por ahora solo puedo leer mensajes de texto, audio, imágenes o ubicación 🙏. Escribime tu pedido o consulta.",
         );
         continue;
       }
       console.log(`[webhook] Texto de ${from}: "${text}"`);
       const replies = useAiConversation
-        ? await handleIncomingMessageAI(from, text)
+        ? await handleIncomingMessageAI(from, text, image)
         : await handleIncomingMessage(from, text);
       console.log(`[webhook] Enviando ${replies.length} respuesta(s) a ${from}`);
       for (const reply of replies) {

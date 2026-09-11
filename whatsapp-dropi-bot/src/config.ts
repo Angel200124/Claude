@@ -37,6 +37,15 @@ export const config = {
     intervalMinutes: Number(process.env.POLL_INTERVAL_MINUTES ?? 15),
   },
 
+  /**
+   * Tu número de WhatsApp (el del dueño del negocio) para recibir el aviso
+   * de cada pedido nuevo mientras DROPI_API_KEY no esté configurada — en ese
+   * modo "manual" vos cargás el pedido en Dropi y le mandás la guía al
+   * cliente por tu cuenta. Formato igual al que usa la Cloud API (código de
+   * país + número, sin "+" ni espacios), ej: 593998248358.
+   */
+  ownerNotificationPhone: process.env.OWNER_NOTIFICATION_PHONE ?? "",
+
   ai: {
     /**
      * "rules"  -> flujo de reglas fijas (conversation/flow.ts), sin IA.
@@ -61,9 +70,15 @@ export function assertRequiredConfig(): void {
   if (!config.dropi.apiKey) {
     // eslint-disable-next-line no-console
     console.warn(
-      "[config] DROPI_API_KEY no está configurada: el bot puede recibir y responder " +
-        "mensajes, pero no va a poder crear pedidos ni consultar estados en Dropi.",
+      "[config] DROPI_API_KEY no está configurada: los pedidos van a quedar en modo " +
+        "manual (se te avisa por WhatsApp para cargarlos vos en Dropi) en vez de crearse solos.",
     );
+    if (!config.ownerNotificationPhone) {
+      console.warn(
+        "[config] OWNER_NOTIFICATION_PHONE tampoco está configurado — en modo manual " +
+          "no vas a recibir el aviso de los pedidos nuevos por WhatsApp, solo van a quedar en la base de datos.",
+      );
+    }
   }
 
   if (config.ai.mode === "ai" && !config.ai.apiKey) {

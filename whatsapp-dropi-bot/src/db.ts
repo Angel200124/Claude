@@ -196,7 +196,9 @@ export function getLatestOrderForCustomer(phone: string): OrderRecord | null {
 
 /** Pedidos cuyo estado todavía no es uno de los "finales" configurados. */
 export function getOpenOrders(terminalStatuses: string[]): OrderRecord[] {
-  const rows = db.prepare("SELECT * FROM orders").all() as any[];
+  // Los pedidos "MANUAL-*" (creados sin DROPI_API_KEY) no existen en Dropi,
+  // así que nunca hay que consultarles el estado ahí.
+  const rows = db.prepare("SELECT * FROM orders WHERE dropi_order_id NOT LIKE 'MANUAL-%'").all() as any[];
   return rows
     .map(rowToOrder)
     .filter((o) => !terminalStatuses.includes(o.status.trim().toLowerCase()));

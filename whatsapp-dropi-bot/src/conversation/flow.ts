@@ -1,5 +1,5 @@
-import { getOrCreateCustomer, saveCustomer, createOrderRecord, getLatestOrderForCustomer } from "../db.js";
-import { dropiClient } from "../dropi/client.js";
+import { getOrCreateCustomer, saveCustomer, getLatestOrderForCustomer } from "../db.js";
+import { submitOrder } from "../orders/submitOrder.js";
 import { ConversationState, type Customer } from "../types.js";
 import * as msg from "./messages.js";
 import { normalize, isCancel, isConfirm } from "./textMatch.js";
@@ -46,35 +46,14 @@ async function handleIdle(customer: Customer, text: string): Promise<string[]> {
 }
 
 async function createDropiOrder(customer: Customer): Promise<string[]> {
-  const draft = customer.draftOrder;
-  try {
-    const result = await dropiClient.createOrder({
-      customerName: draft.customerName!,
-      customerPhone: customer.phone,
-      address: draft.address!,
-      city: draft.city!,
-      productName: draft.productName!,
-      quantity: draft.quantity!,
-    });
-
-    createOrderRecord({
-      customerPhone: customer.phone,
-      dropiOrderId: result.dropiOrderId,
-      productName: draft.productName!,
-      quantity: draft.quantity!,
-      address: draft.address!,
-      city: draft.city!,
-      status: result.status,
-    });
-
+  const result = await submitOrder(customer.phone, customer.draftOrder);
+  // Si falló (solo pasa cuando Dropi está configurada y la llamada dio error),
+  // dejamos al cliente en AWAITING_CONFIRM para que pueda reintentar con
+  // CONFIRMAR sin tener que cargar todos los datos de nuevo.
+  if (result.success) {
     resetToIdle(customer);
-    return [msg.orderCreatedMessage(result.dropiOrderId)];
-  } catch (error) {
-    console.error(`[flow] Error creando el pedido en Dropi para ${customer.phone}:`, error);
-    // Dejamos al cliente en AWAITING_CONFIRM para que pueda reintentar con CONFIRMAR
-    // sin tener que cargar todos los datos de nuevo.
-    return [msg.ORDER_CREATION_FAILED];
   }
+  return [result.reply];
 }
 
 /**

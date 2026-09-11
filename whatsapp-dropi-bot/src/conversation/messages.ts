@@ -42,6 +42,27 @@ Te voy a avisar por acá apenas haya novedades con el envío.`;
 export const ORDER_CREATION_FAILED =
   "Uy, tuve un problema para generar tu pedido en el sistema 😕. Ya le avisé al equipo — probá de nuevo en unos minutos o escribinos directamente.";
 
+/**
+ * Se usa en vez de orderCreatedMessage cuando todavía no está conectada la
+ * API de Dropi (DROPI_API_KEY vacía) — el pedido se guarda igual y se le
+ * avisa al dueño del negocio para que lo cargue a mano (ver ownerOrderNotification).
+ */
+export const ORDER_RECEIVED_MANUAL = `¡Listo, pedido recibido! ✅
+
+En breve te contactamos para coordinar el envío y pasarte el número de seguimiento.`;
+
+export function ownerOrderNotification(orderRef: string, customerPhone: string, draft: DraftOrder): string {
+  return `📦 *Pedido nuevo* (ref. ${orderRef})
+
+🛒 Producto: ${draft.productName}
+🔢 Cantidad: ${draft.quantity}
+🙍 Cliente: ${draft.customerName} — wa.me/${customerPhone}
+📍 Dirección: ${draft.address}
+🏙️ Ciudad: ${draft.city}
+
+Todavía no está conectada la API de Dropi — cargalo a mano y mandale la guía al cliente.`;
+}
+
 export function orderStatusMessage(dropiOrderId: string, status: string): string {
   return `Tu último pedido (*${dropiOrderId}*) está en estado: *${friendlyStatus(status)}*.`;
 }
@@ -55,6 +76,7 @@ export const NO_ORDERS_YET = "Todavía no tenés pedidos registrados. Escribí *
  * te devuelve la API (mirá los logs del poller, que imprime el estado crudo).
  */
 const STATUS_LABELS: Record<string, string> = {
+  pendiente: "Pedido recibido, en preparación para despacho",
   creado: "Pedido creado",
   confirmado: "Pedido confirmado",
   "en bodega": "En bodega",

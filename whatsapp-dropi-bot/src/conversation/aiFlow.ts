@@ -1,41 +1,20 @@
-import { getOrCreateCustomer, saveCustomer, createOrderRecord, getLatestOrderForCustomer } from "../db.js";
-import { dropiClient } from "../dropi/client.js";
+import { getOrCreateCustomer, saveCustomer, getLatestOrderForCustomer } from "../db.js";
+import { submitOrder } from "../orders/submitOrder.js";
 import { runOrderAssistant } from "../ai/orderAssistant.js";
 import type { Customer } from "../types.js";
 import * as msg from "./messages.js";
 import { isCancel, isConfirm } from "./textMatch.js";
 
 async function createDropiOrderFromDraft(customer: Customer): Promise<string> {
-  const draft = customer.draftOrder;
-  try {
-    const result = await dropiClient.createOrder({
-      customerName: draft.customerName!,
-      customerPhone: customer.phone,
-      address: draft.address!,
-      city: draft.city!,
-      productName: draft.productName!,
-      quantity: draft.quantity!,
-    });
-
-    createOrderRecord({
-      customerPhone: customer.phone,
-      dropiOrderId: result.dropiOrderId,
-      productName: draft.productName!,
-      quantity: draft.quantity!,
-      address: draft.address!,
-      city: draft.city!,
-      status: result.status,
-    });
-
+  const result = await submitOrder(customer.phone, customer.draftOrder);
+  // Si falló (solo pasa cuando Dropi está configurada y la llamada dio
+  // error), dejamos awaitingConfirmation en true para poder reintentar con
+  // CONFIRMAR sin volver a dictar todos los datos.
+  if (result.success) {
     customer.awaitingConfirmation = false;
     customer.draftOrder = {};
-    return msg.orderCreatedMessage(result.dropiOrderId);
-  } catch (error) {
-    console.error(`[aiFlow] Error creando el pedido en Dropi para ${customer.phone}:`, error);
-    // Dejamos awaitingConfirmation en true para que pueda reintentar con CONFIRMAR
-    // sin tener que volver a dictar todos los datos.
-    return msg.ORDER_CREATION_FAILED;
   }
+  return result.reply;
 }
 
 /**

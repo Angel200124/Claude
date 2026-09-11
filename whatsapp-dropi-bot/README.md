@@ -110,7 +110,11 @@ Cada pedido confirmado se guarda en la base local y, si `OWNER_NOTIFICATION_PHON
 
 El mensaje final que ve el cliente en modo IA termina con un saludo según la hora en Ecuador y el emoji 🛍️, para que se identifique de un vistazo en la conversación que la venta se cerró.
 
-## 7. Estructura del proyecto
+## 7. Notas de voz (audio)
+
+Si el cliente manda un audio, el bot lo descarga de WhatsApp, lo transcribe a texto con Whisper (corriendo en [Groq](https://console.groq.com), configurable con `GROQ_API_KEY`) y lo procesa como si fuera un mensaje de texto normal — ver [`src/whatsapp/media.ts`](./src/whatsapp/media.ts) y [`src/ai/transcribe.ts`](./src/ai/transcribe.ts). Sin `GROQ_API_KEY` configurada, el bot le pide al cliente que escriba en texto en vez de mandar audio.
+
+## 8. Estructura del proyecto
 
 ```
 src/
@@ -119,24 +123,26 @@ src/
   types.ts                # tipos compartidos
   server.ts               # Express: webhook de WhatsApp
   whatsapp/client.ts       # envío de mensajes vía WhatsApp Cloud API
+  whatsapp/media.ts        # descarga de archivos multimedia (audio) de WhatsApp
   orders/submitOrder.ts     # punto único para generar un pedido nuevo
   conversation/flow.ts      # máquina de estados de la conversación (modo "rules")
   conversation/aiFlow.ts    # conversación completa con IA (modo "ai")
   conversation/messages.ts  # todos los textos en español + mapeo de estados
   ai/orderAssistant.ts      # personalidad de Lucía + herramientas de Claude
   ai/catalog.ts             # catálogo de productos que Lucía conoce
+  ai/transcribe.ts          # transcripción de audio a texto (Whisper/Groq)
 ```
 
-## 8. Seguridad y buenas prácticas
+## 9. Seguridad y buenas prácticas
 
 - Nunca subas `.env` al repositorio (ya está en `.gitignore`).
 - El `WHATSAPP_VERIFY_TOKEN` solo lo necesitás vos y Meta — no lo compartas.
 - Considerá agregar un rate-limit (por ejemplo `express-rate-limit`) si el bot queda expuesto públicamente sin control de tráfico.
 - Los mensajes de WhatsApp llegan como reintentos si tu servidor no responde `200` rápido — por eso el webhook responde `200` inmediatamente y procesa el mensaje después (y guarda `message_id` procesados para no duplicar respuestas).
 
-## 9. Límites conocidos de esta primera versión
+## 10. Límites conocidos de esta primera versión
 
-- Solo procesa mensajes de **texto** (audio/imágenes reciben un mensaje pidiendo texto).
+- Procesa mensajes de **texto**, **audio** (transcripto) y **ubicación** (imágenes u otros tipos reciben un mensaje pidiendo texto).
 - Un solo producto por pedido (no carrito con varios ítems).
 - No hay panel de administración — el estado vive en SQLite (`data/bot.sqlite`); se puede inspeccionar con cualquier cliente de SQLite.
 - Pensado para un solo número de WhatsApp / una sola tienda.

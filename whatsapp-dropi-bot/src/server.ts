@@ -4,6 +4,8 @@ import { isMessageProcessed, markMessageProcessed } from "./db.js";
 import { handleIncomingMessage } from "./conversation/flow.js";
 import { handleIncomingMessageAI } from "./conversation/aiFlow.js";
 import { sendWhatsAppText } from "./whatsapp/client.js";
+import { downloadWhatsAppMedia } from "./whatsapp/media.js";
+import { transcribeAudio } from "./ai/transcribe.js";
 
 assertRequiredConfig();
 
@@ -78,10 +80,27 @@ app.post("/webhook/whatsapp", async (req, res) => {
         text = ["[El cliente compartió su ubicación de WhatsApp]", loc.name, loc.address, mapsLink]
           .filter(Boolean)
           .join(" — ");
+      } else if (message.type === "audio") {
+        const mediaId = message.audio?.id;
+        let transcript = "";
+        if (mediaId) {
+          try {
+            const { buffer, mimeType } = await downloadWhatsAppMedia(mediaId);
+            transcript = await transcribeAudio(buffer, mimeType);
+          } catch (error) {
+            console.error(`[webhook] Error procesando audio de ${from}:`, error);
+          }
+        }
+        if (!transcript) {
+          await sendWhatsAppText(from, "No pude entender bien tu audio 🙏, ¿me lo podés escribir como texto?");
+          continue;
+        }
+        text = transcript;
+        console.log(`[webhook] Audio de ${from} transcripto: "${text}"`);
       } else {
         await sendWhatsAppText(
           from,
-          "Por ahora solo puedo leer mensajes de texto o ubicación 🙏. Escribime tu pedido o consulta como texto.",
+          "Por ahora solo puedo leer mensajes de texto, audio o ubicación 🙏. Escribime tu pedido o consulta.",
         );
         continue;
       }

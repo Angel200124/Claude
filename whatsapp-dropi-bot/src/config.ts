@@ -28,6 +28,11 @@ export const config = {
    */
   ownerNotificationPhone: process.env.OWNER_NOTIFICATION_PHONE ?? "",
 
+  /** Transcripción de audios de WhatsApp (notas de voz) a texto, vía Whisper en Groq. */
+  groq: {
+    apiKey: process.env.GROQ_API_KEY ?? "",
+  },
+
   ai: {
     /**
      * "rules"  -> flujo de reglas fijas (conversation/flow.ts), sin IA.
@@ -62,6 +67,14 @@ export function assertRequiredConfig(): void {
     console.warn(
       "[config] CONVERSATION_MODE=ai pero falta ANTHROPIC_API_KEY. " +
         "El bot va a caer al flujo de reglas fijas hasta que la agregues.",
+    );
+  }
+
+  if (!config.groq.apiKey) {
+    // eslint-disable-next-line no-console
+    console.warn(
+      "[config] GROQ_API_KEY no está configurada — los audios de WhatsApp no se van a poder " +
+        "transcribir (se le va a pedir al cliente que escriba en texto).",
     );
   }
 }

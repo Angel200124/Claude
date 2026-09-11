@@ -29,7 +29,7 @@ db.exec(`
   CREATE TABLE IF NOT EXISTS orders (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     customer_phone TEXT NOT NULL,
-    dropi_order_id TEXT NOT NULL,
+    order_ref TEXT NOT NULL,
     product_name TEXT NOT NULL,
     quantity INTEGER NOT NULL,
     address TEXT NOT NULL,
@@ -46,10 +46,11 @@ db.exec(`
   );
 `);
 
-// Migración liviana para bases de datos creadas antes de agregar estas columnas.
+// Migración liviana para bases de datos creadas antes de agregar/renombrar estas columnas.
 for (const ddl of [
   "ALTER TABLE customers ADD COLUMN ai_history TEXT NOT NULL DEFAULT '[]'",
   "ALTER TABLE customers ADD COLUMN awaiting_confirmation INTEGER NOT NULL DEFAULT 0",
+  "ALTER TABLE orders RENAME COLUMN dropi_order_id TO order_ref",
 ]) {
   try {
     db.exec(ddl);
@@ -129,7 +130,7 @@ export function saveCustomer(customer: Customer): void {
 
 export function createOrderRecord(input: {
   customerPhone: string;
-  dropiOrderId: string;
+  orderRef: string;
   productName: string;
   quantity: number;
   address: string;
@@ -140,12 +141,12 @@ export function createOrderRecord(input: {
   const result = db
     .prepare(
       `INSERT INTO orders
-        (customer_phone, dropi_order_id, product_name, quantity, address, city, status, last_notified_status, created_at, updated_at)
+        (customer_phone, order_ref, product_name, quantity, address, city, status, last_notified_status, created_at, updated_at)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     )
     .run(
       input.customerPhone,
-      input.dropiOrderId,
+      input.orderRef,
       input.productName,
       input.quantity,
       input.address,
@@ -159,7 +160,7 @@ export function createOrderRecord(input: {
   return {
     id: Number(result.lastInsertRowid),
     customerPhone: input.customerPhone,
-    dropiOrderId: input.dropiOrderId,
+    orderRef: input.orderRef,
     productName: input.productName,
     quantity: input.quantity,
     address: input.address,
@@ -175,7 +176,7 @@ function rowToOrder(row: any): OrderRecord {
   return {
     id: row.id,
     customerPhone: row.customer_phone,
-    dropiOrderId: row.dropi_order_id,
+    orderRef: row.order_ref,
     productName: row.product_name,
     quantity: row.quantity,
     address: row.address,
@@ -192,26 +193,6 @@ export function getLatestOrderForCustomer(phone: string): OrderRecord | null {
     .prepare("SELECT * FROM orders WHERE customer_phone = ? ORDER BY id DESC LIMIT 1")
     .get(phone);
   return row ? rowToOrder(row) : null;
-}
-
-/** Pedidos cuyo estado todavía no es uno de los "finales" configurados. */
-export function getOpenOrders(terminalStatuses: string[]): OrderRecord[] {
-  // Los pedidos "MANUAL-*" (creados sin DROPI_API_KEY) no existen en Dropi,
-  // así que nunca hay que consultarles el estado ahí.
-  const rows = db.prepare("SELECT * FROM orders WHERE dropi_order_id NOT LIKE 'MANUAL-%'").all() as any[];
-  return rows
-    .map(rowToOrder)
-    .filter((o) => !terminalStatuses.includes(o.status.trim().toLowerCase()));
-}
-
-export function updateOrderStatus(orderId: number, status: string, notified: boolean): void {
-  if (notified) {
-    db.prepare(
-      `UPDATE orders SET status = ?, last_notified_status = ?, updated_at = ? WHERE id = ?`,
-    ).run(status, status, now(), orderId);
-  } else {
-    db.prepare(`UPDATE orders SET status = ?, updated_at = ? WHERE id = ?`).run(status, now(), orderId);
-  }
 }
 
 export function isMessageProcessed(messageId: string): boolean {

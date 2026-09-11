@@ -32,21 +32,7 @@ export const CONFIRM_INVALID = "Escribí *CONFIRMAR* para generar el pedido, o *
 
 export const ORDER_CANCELLED = "Listo, cancelé el pedido. Escribí *PEDIDO* cuando quieras empezar de nuevo.";
 
-export function orderCreatedMessage(dropiOrderId: string): string {
-  return `¡Pedido generado! ✅
-Número de seguimiento: *${dropiOrderId}*
-
-Te voy a avisar por acá apenas haya novedades con el envío.`;
-}
-
-export const ORDER_CREATION_FAILED =
-  "Uy, tuve un problema para generar tu pedido en el sistema 😕. Ya le avisé al equipo — probá de nuevo en unos minutos o escribinos directamente.";
-
-/**
- * Se usa en vez de orderCreatedMessage cuando todavía no está conectada la
- * API de Dropi (DROPI_API_KEY vacía) — el pedido se guarda igual y se le
- * avisa al dueño del negocio para que lo cargue a mano (ver ownerOrderNotification).
- */
+/** Mensaje que ve el cliente apenas confirma el pedido — el envío lo coordina el dueño del negocio a mano. */
 export const ORDER_RECEIVED_MANUAL = `¡Listo, pedido recibido! ✅
 
 En breve te contactamos para coordinar el envío y pasarte el número de seguimiento.`;
@@ -60,45 +46,33 @@ export function ownerOrderNotification(orderRef: string, customerPhone: string, 
 📍 Dirección: ${draft.address}
 🏙️ Ciudad: ${draft.city}
 
-Todavía no está conectada la API de Dropi — cargalo a mano y mandale la guía al cliente.`;
+Coordina el envío y mándale la guía al cliente.`;
 }
 
-export function orderStatusMessage(dropiOrderId: string, status: string): string {
-  return `Tu último pedido (*${dropiOrderId}*) está en estado: *${friendlyStatus(status)}*.`;
+export function orderStatusMessage(orderRef: string, status: string): string {
+  return `Tu último pedido (*${orderRef}*) está en estado: *${friendlyStatus(status)}*.`;
 }
 
 export const NO_ORDERS_YET = "Todavía no tenés pedidos registrados. Escribí *PEDIDO* para hacer uno.";
 
 /**
- * Mapeo de estados "crudos" de Dropi a un texto amigable en español.
- * Los nombres exactos de estados dependen de tu cuenta de Dropi — ajustá
- * las claves de este diccionario una vez que veas los valores reales que
- * te devuelve la API (mirá los logs del poller, que imprime el estado crudo).
+ * Mapeo de estados internos a un texto amigable en español. Por ahora todo
+ * pedido nuevo queda en "pendiente" (el envío se coordina a mano) — este
+ * diccionario queda listo por si más adelante se agrega alguna forma de
+ * actualizar el estado de un pedido.
  */
 const STATUS_LABELS: Record<string, string> = {
   pendiente: "Pedido recibido, en preparación para despacho",
-  creado: "Pedido creado",
   confirmado: "Pedido confirmado",
-  "en bodega": "En bodega",
   "en preparacion": "En preparación",
   "en_preparacion": "En preparación",
-  "en transito": "En camino",
-  "en_transito": "En camino",
-  "en reparto": "En reparto (llega hoy o mañana)",
-  "en_reparto": "En reparto (llega hoy o mañana)",
+  "en camino": "En camino",
+  "en_camino": "En camino",
   entregado: "Entregado 📦✅",
-  novedad: "Hay una novedad con el envío — te vamos a contactar",
-  devuelto: "Devuelto al remitente",
   cancelado: "Cancelado",
 };
 
 export function friendlyStatus(rawStatus: string): string {
   const key = rawStatus.trim().toLowerCase();
   return STATUS_LABELS[key] ?? rawStatus;
-}
-
-export function statusUpdateMessage(dropiOrderId: string, newStatus: string): string {
-  return `📦 Actualización de tu pedido *${dropiOrderId}*:
-
-${friendlyStatus(newStatus)}`;
 }

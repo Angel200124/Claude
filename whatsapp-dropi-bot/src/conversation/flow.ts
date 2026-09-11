@@ -35,7 +35,7 @@ async function handleIdle(customer: Customer, text: string): Promise<string[]> {
 
   if (isEstadoTrigger(text)) {
     const order = getLatestOrderForCustomer(customer.phone);
-    return [order ? msg.orderStatusMessage(order.dropiOrderId, order.status) : msg.NO_ORDERS_YET];
+    return [order ? msg.orderStatusMessage(order.orderRef, order.status) : msg.NO_ORDERS_YET];
   }
 
   if (isGreeting(text)) {
@@ -45,11 +45,10 @@ async function handleIdle(customer: Customer, text: string): Promise<string[]> {
   return [msg.UNKNOWN_FALLBACK];
 }
 
-async function createDropiOrder(customer: Customer): Promise<string[]> {
+async function createOrder(customer: Customer): Promise<string[]> {
   const result = await submitOrder(customer.phone, customer.draftOrder);
-  // Si falló (solo pasa cuando Dropi está configurada y la llamada dio error),
-  // dejamos al cliente en AWAITING_CONFIRM para que pueda reintentar con
-  // CONFIRMAR sin tener que cargar todos los datos de nuevo.
+  // Si falló, dejamos al cliente en AWAITING_CONFIRM para que pueda reintentar
+  // con CONFIRMAR sin tener que cargar todos los datos de nuevo.
   if (result.success) {
     resetToIdle(customer);
   }
@@ -59,7 +58,7 @@ async function createDropiOrder(customer: Customer): Promise<string[]> {
 /**
  * Procesa un mensaje entrante y devuelve la(s) respuesta(s) a enviar por WhatsApp.
  * Efectos secundarios: persiste el estado de la conversación y, si corresponde,
- * crea el pedido en Dropi.
+ * genera el pedido.
  */
 export async function handleIncomingMessage(phone: string, text: string): Promise<string[]> {
   const customer = getOrCreateCustomer(phone);
@@ -137,7 +136,7 @@ export async function handleIncomingMessage(phone: string, text: string): Promis
         resetToIdle(customer);
         replies = [msg.ORDER_CANCELLED];
       } else if (isConfirm(text)) {
-        replies = await createDropiOrder(customer);
+        replies = await createOrder(customer);
       } else {
         replies = [msg.CONFIRM_INVALID];
       }

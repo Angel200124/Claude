@@ -20,27 +20,9 @@ export const config = {
     graphApiVersion: process.env.WHATSAPP_GRAPH_API_VERSION ?? "v21.0",
   },
 
-  dropi: {
-    baseUrl: process.env.DROPI_API_BASE_URL ?? "https://api.dropi.co",
-    apiKey: process.env.DROPI_API_KEY ?? "",
-    authHeaderName: process.env.DROPI_AUTH_HEADER_NAME ?? "Authorization",
-    authHeaderPrefix: process.env.DROPI_AUTH_HEADER_PREFIX ?? "Bearer",
-    createOrderPath: process.env.DROPI_CREATE_ORDER_PATH ?? "/api/orders",
-    orderStatusPath: process.env.DROPI_ORDER_STATUS_PATH ?? "/api/orders/:id",
-    terminalStatuses: (process.env.DROPI_TERMINAL_STATUSES ?? "entregado,cancelado,devuelto")
-      .split(",")
-      .map((s) => s.trim().toLowerCase())
-      .filter(Boolean),
-  },
-
-  polling: {
-    intervalMinutes: Number(process.env.POLL_INTERVAL_MINUTES ?? 15),
-  },
-
   /**
    * Tu número de WhatsApp (el del dueño del negocio) para recibir el aviso
-   * de cada pedido nuevo mientras DROPI_API_KEY no esté configurada — en ese
-   * modo "manual" vos cargás el pedido en Dropi y le mandás la guía al
+   * de cada pedido nuevo — vos coordinás el envío y le mandás la guía al
    * cliente por tu cuenta. Formato igual al que usa la Cloud API (código de
    * país + número, sin "+" ni espacios), ej: 593998248358.
    */
@@ -67,18 +49,12 @@ export function assertRequiredConfig(): void {
   required("WHATSAPP_PHONE_NUMBER_ID", config.whatsapp.phoneNumberId);
   required("WHATSAPP_VERIFY_TOKEN", config.whatsapp.verifyToken);
 
-  if (!config.dropi.apiKey) {
+  if (!config.ownerNotificationPhone) {
     // eslint-disable-next-line no-console
     console.warn(
-      "[config] DROPI_API_KEY no está configurada: los pedidos van a quedar en modo " +
-        "manual (se te avisa por WhatsApp para cargarlos vos en Dropi) en vez de crearse solos.",
+      "[config] OWNER_NOTIFICATION_PHONE no está configurado — no vas a recibir el aviso " +
+        "de los pedidos nuevos por WhatsApp, solo van a quedar guardados en la base de datos.",
     );
-    if (!config.ownerNotificationPhone) {
-      console.warn(
-        "[config] OWNER_NOTIFICATION_PHONE tampoco está configurado — en modo manual " +
-          "no vas a recibir el aviso de los pedidos nuevos por WhatsApp, solo van a quedar en la base de datos.",
-      );
-    }
   }
 
   if (config.ai.mode === "ai" && !config.ai.apiKey) {

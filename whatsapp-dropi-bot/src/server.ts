@@ -4,7 +4,6 @@ import { isMessageProcessed, markMessageProcessed } from "./db.js";
 import { handleIncomingMessage } from "./conversation/flow.js";
 import { handleIncomingMessageAI } from "./conversation/aiFlow.js";
 import { sendWhatsAppText } from "./whatsapp/client.js";
-import { startStatusPoller } from "./dropi/statusPoller.js";
 
 assertRequiredConfig();
 
@@ -91,5 +90,4 @@ app.post("/webhook/whatsapp", async (req, res) => {
 
 app.listen(config.port, () => {
   console.log(`[server] Escuchando en el puerto ${config.port}`);
-  startStatusPoller();
 });

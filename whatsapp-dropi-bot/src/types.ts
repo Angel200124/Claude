@@ -37,7 +37,8 @@ export interface AiChatMessage {
 export interface OrderRecord {
   id: number;
   customerPhone: string;
-  dropiOrderId: string;
+  /** Referencia interna del pedido (la generamos nosotros, no viene de ningún servicio externo). */
+  orderRef: string;
   productName: string;
   quantity: number;
   address: string;
@@ -46,27 +47,4 @@ export interface OrderRecord {
   lastNotifiedStatus: string | null;
   createdAt: string;
   updatedAt: string;
-}
-
-/** Lo que le mandamos a Dropi para generar un pedido/guía. */
-export interface DropiOrderInput {
-  customerName: string;
-  customerPhone: string;
-  address: string;
-  city: string;
-  productName: string;
-  quantity: number;
-  notes?: string;
-}
-
-export interface DropiOrderResult {
-  /** ID interno que Dropi asigna al pedido/guía — se guarda para consultar el estado después. */
-  dropiOrderId: string;
-  /** Estado inicial tal como lo devuelve Dropi (texto libre, sin normalizar). */
-  status: string;
-}
-
-export interface DropiClient {
-  createOrder(input: DropiOrderInput): Promise<DropiOrderResult>;
-  getOrderStatus(dropiOrderId: string): Promise<string>;
 }

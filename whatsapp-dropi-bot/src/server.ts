@@ -31,6 +31,7 @@ app.get("/webhook/whatsapp", (req, res) => {
 app.post("/webhook/whatsapp", async (req, res) => {
   // Respondemos rápido — Meta reintenta si no contestamos 200 a tiempo.
   res.sendStatus(200);
+  console.log("[webhook] POST recibido de Meta");
 
   try {
     const entry = req.body?.entry?.[0];
@@ -40,17 +41,23 @@ app.post("/webhook/whatsapp", async (req, res) => {
 
     if (!messages || messages.length === 0) {
       // Puede ser un evento de "status" (entregado/leído), no un mensaje. Lo ignoramos.
+      console.log("[webhook] Sin mensajes en este evento (probablemente un status). Payload:", JSON.stringify(req.body));
       return;
     }
 
     for (const message of messages) {
       const messageId: string | undefined = message.id;
       if (messageId) {
-        if (isMessageProcessed(messageId)) continue; // reintento de Meta, ya lo manejamos
+        if (isMessageProcessed(messageId)) {
+          console.log(`[webhook] Mensaje ${messageId} ya procesado antes, ignorando reintento de Meta.`);
+          continue;
+        }
         markMessageProcessed(messageId);
       }
 
       const from: string = message.from;
+      console.log(`[webhook] Mensaje de ${from} (tipo: ${message.type})`);
+
       if (message.type !== "text") {
         await sendWhatsAppText(
           from,
@@ -60,7 +67,9 @@ app.post("/webhook/whatsapp", async (req, res) => {
       }
 
       const text: string = message.text?.body ?? "";
+      console.log(`[webhook] Texto de ${from}: "${text}"`);
       const replies = await handleIncomingMessage(from, text);
+      console.log(`[webhook] Enviando ${replies.length} respuesta(s) a ${from}`);
       for (const reply of replies) {
         await sendWhatsAppText(from, reply);
       }

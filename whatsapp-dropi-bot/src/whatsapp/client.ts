@@ -25,6 +25,7 @@ export async function sendWhatsAppText(to: string, body: string): Promise<void> 
         timeout: 15_000,
       },
     );
+    console.log(`[whatsapp] Mensaje enviado a ${to}`);
   } catch (error) {
     if (axios.isAxiosError(error)) {
       console.error(

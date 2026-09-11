@@ -9,11 +9,6 @@ function required(name: string, value: string | undefined): string {
   return value;
 }
 
-function bool(value: string | undefined, fallback: boolean): boolean {
-  if (value === undefined) return fallback;
-  return value.trim().toLowerCase() === "true";
-}
-
 export const config = {
   port: Number(process.env.PORT ?? 3000),
   dbPath: process.env.DB_PATH ?? "./data/bot.sqlite",
@@ -43,7 +38,13 @@ export const config = {
   },
 
   ai: {
-    enabled: bool(process.env.ENABLE_AI_FAQ, false),
+    /**
+     * "rules"  -> flujo de reglas fijas (conversation/flow.ts), sin IA.
+     * "ai"     -> Claude maneja toda la conversación, incluido tomar el pedido
+     *             (conversation/aiFlow.ts) — la confirmación final del pedido
+     *             sigue siendo un paso fijo en código, nunca decidido por la IA.
+     */
+    mode: (process.env.CONVERSATION_MODE ?? "rules").trim().toLowerCase() as "rules" | "ai",
     apiKey: process.env.ANTHROPIC_API_KEY ?? "",
     model: process.env.CLAUDE_MODEL ?? "claude-opus-5",
     businessName: process.env.BUSINESS_NAME ?? "la tienda",
@@ -65,11 +66,11 @@ export function assertRequiredConfig(): void {
     );
   }
 
-  if (config.ai.enabled && !config.ai.apiKey) {
+  if (config.ai.mode === "ai" && !config.ai.apiKey) {
     // eslint-disable-next-line no-console
     console.warn(
-      "[config] ENABLE_AI_FAQ está en true pero falta ANTHROPIC_API_KEY. " +
-        "Las preguntas libres van a usar la respuesta genérica en vez de IA.",
+      "[config] CONVERSATION_MODE=ai pero falta ANTHROPIC_API_KEY. " +
+        "El bot va a caer al flujo de reglas fijas hasta que la agregues.",
     );
   }
 }

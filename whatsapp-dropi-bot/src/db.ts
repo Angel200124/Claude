@@ -2,7 +2,13 @@ import Database from "better-sqlite3";
 import fs from "node:fs";
 import path from "node:path";
 import { config } from "./config.js";
-import { ConversationState, type Customer, type DraftOrder, type OrderRecord } from "./types.js";
+import {
+  ConversationState,
+  type AiChatMessage,
+  type Customer,
+  type DraftOrder,
+  type OrderRecord,
+} from "./types.js";
 
 fs.mkdirSync(path.dirname(config.dbPath), { recursive: true });
 
@@ -15,6 +21,8 @@ db.exec(`
     name TEXT,
     state TEXT NOT NULL DEFAULT 'IDLE',
     draft_order TEXT NOT NULL DEFAULT '{}',
+    ai_history TEXT NOT NULL DEFAULT '[]',
+    awaiting_confirmation INTEGER NOT NULL DEFAULT 0,
     updated_at TEXT NOT NULL
   );
 
@@ -38,13 +46,35 @@ db.exec(`
   );
 `);
 
+// Migración liviana para bases de datos creadas antes de agregar estas columnas.
+for (const ddl of [
+  "ALTER TABLE customers ADD COLUMN ai_history TEXT NOT NULL DEFAULT '[]'",
+  "ALTER TABLE customers ADD COLUMN awaiting_confirmation INTEGER NOT NULL DEFAULT 0",
+]) {
+  try {
+    db.exec(ddl);
+  } catch {
+    // La columna ya existe — nada que hacer.
+  }
+}
+
 function now(): string {
   return new Date().toISOString();
 }
 
+const MAX_AI_HISTORY = 20;
+
 export function getOrCreateCustomer(phone: string): Customer {
   const row = db.prepare("SELECT * FROM customers WHERE phone = ?").get(phone) as
-    | { phone: string; name: string | null; state: string; draft_order: string; updated_at: string }
+    | {
+        phone: string;
+        name: string | null;
+        state: string;
+        draft_order: string;
+        ai_history: string;
+        awaiting_confirmation: number;
+        updated_at: string;
+      }
     | undefined;
 
   if (row) {
@@ -53,6 +83,8 @@ export function getOrCreateCustomer(phone: string): Customer {
       name: row.name,
       state: row.state as ConversationState,
       draftOrder: JSON.parse(row.draft_order) as DraftOrder,
+      aiHistory: JSON.parse(row.ai_history) as AiChatMessage[],
+      awaitingConfirmation: !!row.awaiting_confirmation,
       updatedAt: row.updated_at,
     };
   }
@@ -62,18 +94,37 @@ export function getOrCreateCustomer(phone: string): Customer {
     name: null,
     state: ConversationState.IDLE,
     draftOrder: {},
+    aiHistory: [],
+    awaitingConfirmation: false,
     updatedAt: now(),
   };
   db.prepare(
-    "INSERT INTO customers (phone, name, state, draft_order, updated_at) VALUES (?, ?, ?, ?, ?)",
-  ).run(customer.phone, customer.name, customer.state, JSON.stringify(customer.draftOrder), customer.updatedAt);
+    "INSERT INTO customers (phone, name, state, draft_order, ai_history, awaiting_confirmation, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
+  ).run(
+    customer.phone,
+    customer.name,
+    customer.state,
+    JSON.stringify(customer.draftOrder),
+    JSON.stringify(customer.aiHistory),
+    customer.awaitingConfirmation ? 1 : 0,
+    customer.updatedAt,
+  );
   return customer;
 }
 
 export function saveCustomer(customer: Customer): void {
+  const trimmedHistory = customer.aiHistory.slice(-MAX_AI_HISTORY);
   db.prepare(
-    `UPDATE customers SET name = ?, state = ?, draft_order = ?, updated_at = ? WHERE phone = ?`,
-  ).run(customer.name, customer.state, JSON.stringify(customer.draftOrder), now(), customer.phone);
+    `UPDATE customers SET name = ?, state = ?, draft_order = ?, ai_history = ?, awaiting_confirmation = ?, updated_at = ? WHERE phone = ?`,
+  ).run(
+    customer.name,
+    customer.state,
+    JSON.stringify(customer.draftOrder),
+    JSON.stringify(trimmedHistory),
+    customer.awaitingConfirmation ? 1 : 0,
+    now(),
+    customer.phone,
+  );
 }
 
 export function createOrderRecord(input: {

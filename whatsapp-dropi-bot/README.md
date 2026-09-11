@@ -90,7 +90,11 @@ pm2 startup   # deja el proceso arrancando solo si el servidor reinicia
 
 ## 6. Cómo funciona la conversación
 
-Flujo determinístico (sin IA) para tomar pedidos, así los datos de envío nunca dependen de que un modelo "interprete" bien una dirección:
+Hay dos modos, elegidos con la variable `CONVERSATION_MODE`:
+
+### Modo "rules" (default) — sin IA
+
+Flujo determinístico para tomar pedidos, así los datos de envío nunca dependen de que un modelo "interprete" bien una dirección ([`src/conversation/flow.ts`](./src/conversation/flow.ts)):
 
 ```
 Cliente escribe "PEDIDO"
@@ -99,14 +103,19 @@ Cliente escribe "PEDIDO"
   → CONFIRMAR crea el pedido en Dropi y le manda el número de seguimiento al cliente
 ```
 
-Cliente escribe "ESTADO" → le contesta el estado de su último pedido.
+Cliente escribe "ESTADO" → le contesta el estado de su último pedido. Cualquier otro mensaje → menú genérico. Cero llamadas a la API de Claude — no requiere `ANTHROPIC_API_KEY`.
 
-Cualquier otro mensaje fuera de ese flujo:
+### Modo "ai" — Claude maneja toda la conversación
 
-- Si `ENABLE_AI_FAQ=true` y hay `ANTHROPIC_API_KEY`, se responde con Claude usando el contexto de `BUSINESS_FAQ_CONTEXT` (para preguntas tipo "¿cuánto tarda el envío?"). Es solo para preguntas libres — nunca para tomar pedidos.
-- Si no, se responde con el menú genérico.
+Con `CONVERSATION_MODE=ai` y `ANTHROPIC_API_KEY` configurada, Claude conversa libremente en cada mensaje (saludos, preguntas, y también juntar los datos del pedido de forma natural en vez de un formulario fijo) — ver [`src/ai/orderAssistant.ts`](./src/ai/orderAssistant.ts) y [`src/conversation/aiFlow.ts`](./src/conversation/aiFlow.ts).
 
-Los textos se pueden editar libremente en [`src/conversation/messages.ts`](./src/conversation/messages.ts).
+**Seguro incluido:** aunque la IA decide qué preguntar y cuándo considera que ya tiene los 5 datos del pedido (llamando a la tool `propose_order`), el resumen de confirmación que ve el cliente lo arma el código a partir de esos datos tal cual, y la creación real del pedido en Dropi **solo** ocurre si el cliente responde literalmente `CONFIRMAR` — ese chequeo es determinístico, la IA nunca puede saltearlo ni confirmar por su cuenta. Si el cliente pide cambiar algo mientras espera la confirmación ("no, la dirección es otra"), sigue conversando con la IA hasta que se vuelve a mostrar el resumen correcto.
+
+Cada cliente tiene su propio historial de conversación (guardado en SQLite, hasta los últimos 20 mensajes) para que Claude tenga contexto de lo ya hablado.
+
+**Costo:** cada mensaje del modo "ai" es una llamada a la API de Claude (con `output_config.effort: "low"` para mantenerlo rápido y barato). Para un volumen chico/mediano el gasto es de centavos de dólar por conversación — podés cambiar `CLAUDE_MODEL` a algo más económico (ej. `claude-haiku-4-5`) si el volumen crece.
+
+Los textos fijos (confirmación, mensajes de estado, etc.) se pueden editar en [`src/conversation/messages.ts`](./src/conversation/messages.ts); el estilo de las respuestas libres de la IA se ajusta en el `system prompt` dentro de `orderAssistant.ts`.
 
 ## 7. Cómo funcionan los avisos de estado
 

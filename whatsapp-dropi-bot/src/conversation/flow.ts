@@ -1,29 +1,8 @@
 import { getOrCreateCustomer, saveCustomer, createOrderRecord, getLatestOrderForCustomer } from "../db.js";
 import { dropiClient } from "../dropi/client.js";
-import { config } from "../config.js";
-import { answerFaq } from "../ai/faqResponder.js";
 import { ConversationState, type Customer } from "../types.js";
 import * as msg from "./messages.js";
-
-const DIACRITICS_REGEX = new RegExp("[\\u0300-\\u036f]", "g");
-
-function normalize(text: string): string {
-  return text
-    .trim()
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(DIACRITICS_REGEX, ""); // saca tildes
-}
-
-function isCancel(text: string): boolean {
-  const n = normalize(text);
-  return n === "cancelar" || n === "no";
-}
-
-function isConfirm(text: string): boolean {
-  const n = normalize(text);
-  return n === "confirmar" || n === "si" || n === "sí";
-}
+import { normalize, isCancel, isConfirm } from "./textMatch.js";
 
 function isPedidoTrigger(text: string): boolean {
   const n = normalize(text);
@@ -61,11 +40,6 @@ async function handleIdle(customer: Customer, text: string): Promise<string[]> {
 
   if (isGreeting(text)) {
     return [msg.WELCOME];
-  }
-
-  if (config.ai.enabled) {
-    const aiReply = await answerFaq(text);
-    if (aiReply) return [aiReply];
   }
 
   return [msg.UNKNOWN_FALLBACK];

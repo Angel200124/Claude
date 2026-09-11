@@ -21,7 +21,17 @@ export interface Customer {
   name: string | null;
   state: ConversationState;
   draftOrder: DraftOrder;
+  /** Historial de la conversación con la IA (solo se usa en CONVERSATION_MODE=ai). */
+  aiHistory: AiChatMessage[];
+  /** true cuando ya se le mostró al cliente el resumen del pedido y se espera CONFIRMAR/CANCELAR. */
+  awaitingConfirmation: boolean;
   updatedAt: string;
+}
+
+/** Un turno de la conversación con Claude (solo texto — no guardamos tool_use crudo). */
+export interface AiChatMessage {
+  role: "user" | "assistant";
+  content: string;
 }
 
 export interface OrderRecord {

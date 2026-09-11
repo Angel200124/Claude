@@ -2,10 +2,18 @@ import express from "express";
 import { config, assertRequiredConfig } from "./config.js";
 import { isMessageProcessed, markMessageProcessed } from "./db.js";
 import { handleIncomingMessage } from "./conversation/flow.js";
+import { handleIncomingMessageAI } from "./conversation/aiFlow.js";
 import { sendWhatsAppText } from "./whatsapp/client.js";
 import { startStatusPoller } from "./dropi/statusPoller.js";
 
 assertRequiredConfig();
+
+const useAiConversation = config.ai.mode === "ai" && !!config.ai.apiKey;
+console.log(
+  useAiConversation
+    ? "[config] CONVERSATION_MODE=ai — Claude maneja la conversación completa (incluido tomar el pedido)."
+    : "[config] Usando el flujo de reglas fijas (sin IA) para la conversación.",
+);
 
 const app = express();
 app.use(express.json());
@@ -68,7 +76,9 @@ app.post("/webhook/whatsapp", async (req, res) => {
 
       const text: string = message.text?.body ?? "";
       console.log(`[webhook] Texto de ${from}: "${text}"`);
-      const replies = await handleIncomingMessage(from, text);
+      const replies = useAiConversation
+        ? await handleIncomingMessageAI(from, text)
+        : await handleIncomingMessage(from, text);
       console.log(`[webhook] Enviando ${replies.length} respuesta(s) a ${from}`);
       for (const reply of replies) {
         await sendWhatsAppText(from, reply);
